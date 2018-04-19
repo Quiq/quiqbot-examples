@@ -5,19 +5,9 @@ from urllib.parse import urljoin
 
 from flask import Flask, request
 
-import mock_data
-
 TOKEN_HEADER = 'X-Centricient-Hook-Token'
 
-get_order_msg = """
-What's your order number?
-""".strip()
-
-get_last_name_msg = """
-What is the last name associated with this order?
-""".strip()
-
-class SelfServiceBot(object):
+class SampleBot(object):
     def __init__(self, site, username, appId, appSecret):
         print('Created bot for {}'.format(site))
         self.site = site
@@ -60,71 +50,22 @@ class SelfServiceBot(object):
         elif hint == 'response-timer-active':
             self.handle_responding_to_customer(conversation)
 
-    def determine_state(self, conversation):
-        bot_messages = [m for m in conversation['messages'] if m['author'] == self.username]
-        if len(bot_messages) == 0:
-            return 'get-order'
-
-        sent_get_order_message = len([m for m in bot_messages if m['text'] == get_order_msg]) > 0
-        sent_get_last_name_message = len([m for m in bot_messages if m['text'] == get_last_name_msg]) > 0
-        sent_order_info = len([m for m in bot_messages if m['text'].startswith('You ordered a')]) > 0
-
-        if sent_order_info:
-            return 'wrapup'
-
-        if sent_get_last_name_message:
-            return 'lookup-order-name'
-
-        if sent_get_order_message:
-            return 'lookup-order-id'
-
-        return None
-
     def handle_responding_to_customer(self, conversation):
         cid = conversation['id']
 
-        last = next(msg for msg in reversed(conversation['messages']) if msg['fromCustomer'])['text']
+        last_customer_message = next(msg for msg in reversed(conversation['messages']) if msg['fromCustomer'])['text']
 
-        state = self.determine_state(conversation)
-        if state == 'get-order':
-            self.send_message(cid, get_order_msg)
-
-        elif state == 'lookup-order-id':
-            match = None
-            for token in last.split():
-                match = next((order for order in mock_data.orders if order['id'] == token), None)
-                if match:
-                    break
-            if match:
-                self.send_message(cid, 'You ordered a ' + match['description'] + ' on ' + match['orderDate'] + '. \n\nIs there anything else I can help you with?')
-            else:
-                self.send_message(cid, get_last_name_msg)
-
-        elif state == 'lookup-order-name':
-            match = None
-            for token in last.split():
-                for idx, cust in enumerate(mock_data.customers):
-                    if cust['name'].split()[1].lower() == token.lower():
-                        match = mock_data.orders[idx]
-                if match:
-                    break
-            if match:
-                self.send_message(cid, 'You ordered a ' + match['description'] + ' on ' + match['orderDate'] + '. \n\nIs there anything else I can help you with?')
-            else:
-                self.send_message(cid, 'One moment please')
-                self.send_to_queue(cid, 'default')
-
-        elif state == 'wrapup':
-            if len([tok for tok in last.split() if tok.lower().startswith('no')]) > 0:
-                self.mark_closed(cid)
-            else:
-                self.send_message(cid, 'One moment please')
-                self.send_to_queue(cid, 'default')
+        if last_customer_message.lower() == 'requeue':
+            self.send_to_queue(cid, 'default')
+        elif last_customer_message.lower() in ['goodbye', 'end', 'close', 'cya', 'bye']:
+            self.mark_closed(cid)
+        else:
+            self.send_message(cid, last_customer_message.upper())
 
 def create_app(config='config.py'):
     app = Flask(__name__)
     app.config.from_pyfile(config)
-    bot = SelfServiceBot(**app.config['BOT'])
+    bot = SampleBot(**app.config['BOT'])
 
     @app.route('/react', methods=['post'])
     def react():

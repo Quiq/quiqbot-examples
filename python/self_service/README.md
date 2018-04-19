@@ -1,3 +1,0 @@
-# Self Service Bot Example
-
-
