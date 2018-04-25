@@ -3,14 +3,18 @@ import boto3
 from time import sleep
 from Quiq import QuiqClient
 
-LEX_BOT_NAME = "BookTrip"
-LEX_BOT_ALIAS = "booktrip"
+LEX_BOT_NAME = "<Name of the AWS Lex bot to use>"
+LEX_BOT_ALIAS = "<Alias for the bot you chose when you published the bot>"
 
-QUIQ_SITE = "https://fred.goquiq.com"
-QUIQ_BOT_USERNAME = "booking_bot"
-QUIQ_VERIFICATION_TOKEN = "9a23055c-63b2-4e74-99df-fa14f42563b0"
-QUIQ_ACCESS_TOKEN_ID = "bd1fcce4-bf0f-473d-945a-e3cca9eefbda"
-QUIQ_ACCESS_TOKEN_SECRET = "eyJhbGciOiJIUzI1NiIsImtpZCI6ImJhc2ljOjAifQ.eyJ0ZW5hbnQiOiJmcmVkIiwic3ViIjoiODM1MiJ9.r_cyUH9-5OHI8OHN57gNUInNtzcY7qMCNeoYTPyRDQU"
+QUIQ_SITE = "https://<tenant>.goquiq.com"
+
+# NOTE: In production, you should never store your Quiq secrets in source code.
+#       This is for demo purposes only.
+
+QUIQ_BOT_USERNAME = "<username of your Quiq bot agent>"
+QUIQ_VERIFICATION_TOKEN = "<your quiq bot secret>""
+QUIQ_ACCESS_TOKEN_ID = "<Bot agent's access token ID>"
+QUIQ_ACCESS_TOKEN_SECRET = "<Bot agent's access token secret>"
 
 AGENT_QUEUE_NAME = "default"
 
