@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import traceback
+import json
 import requests
 from urllib.parse import urljoin
 
@@ -37,6 +38,10 @@ class ReviewBot(object):
     def mark_closed(self, cid):
         self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/close'.format(cid)))
 
+    def update_fields(self, cid, field_map):
+        data = {'fields': [{'field': k, 'value': v} for k, v in field_map.items()]}
+        self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/update-fields'.format(cid)), json=data)
+
     def handle(self, event_type, data):
         if event_type == 'conversation-update':
             self.handle_conversation_update(data)
@@ -46,21 +51,37 @@ class ReviewBot(object):
 
         hint = next((h['hint'] for h in update['hints']), None)
         if hint == 'invitation-timer-active':
+            # TODO Reject if no productReview postback data
             self.accept_invitation(conversation['id'])
         elif hint == 'response-timer-active':
             self.handle_responding_to_customer(conversation)
 
+    def _get_postback_data(self, msg):
+        rich_payload = msg.get('richInteraction', {}).get('interaction', {}).get('payload', {})
+        if rich_payload:
+            wrapped_pb_data = json.loads(rich_payload['suggestionResponse']['postbackData'])
+            original_pb_data = wrapped_pb_data['postbackData']
+            return original_pb_data
+        else:
+            return None
+
     def handle_responding_to_customer(self, conversation):
         cid = conversation['id']
 
-        last_customer_message = next(msg for msg in reversed(conversation['messages']) if msg['fromCustomer'])['text']
+        last_customer_message = next(msg for msg in reversed(conversation['messages']) if msg['fromCustomer'])
+        msg_text = last_customer_message['text']
+        rich_payload = self._get_postback_data(last_customer_message)
 
-        if last_customer_message.lower() == 'requeue':
-            self.send_to_queue(cid, 'default')
-        elif last_customer_message.lower() in ['goodbye', 'end', 'close', 'cya', 'bye']:
+        if rich_payload:
+            rating = rich_payload['rating']
+            product_name = rich_payload['productName']
+            fields = {
+                'schema.conversation.custom.productRating': rating,
+                'schema.conversation.custom.productId': rich_payload['productId']
+            }
+            self.update_fields(cid, fields)
+            self.send_message(cid, 'Thanks for rating the {} a {} out of 5!'.format(product_name, rating))
             self.mark_closed(cid)
-        else:
-            self.send_message(cid, last_customer_message.upper())
 
 def create_app(config='config.py'):
     app = Flask(__name__)
