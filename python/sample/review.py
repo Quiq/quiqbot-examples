@@ -31,6 +31,9 @@ class ReviewBot(object):
     def accept_invitation(self, cid):
         self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/accept'.format(cid)))
 
+    def reject_invitation(self, cid):
+        self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/reject'.format(cid)))
+
     def send_to_queue(self, cid, queue):
         data = {'targetQueue': queue}
         self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/send-to-queue'.format(cid)), json=data)
@@ -51,17 +54,23 @@ class ReviewBot(object):
 
         hint = next((h['hint'] for h in update['hints']), None)
         if hint == 'invitation-timer-active':
-            # TODO Reject if no productReview postback data
-            self.accept_invitation(conversation['id'])
+            pb_data = self._get_postback_data(conversation['messages'][0])
+            if pb_data.get('productReview', False):
+                self.accept_invitation(conversation['id'])
+            else:
+                self.reject_invitation(conversation['id'])
         elif hint == 'response-timer-active':
             self.handle_responding_to_customer(conversation)
 
     def _get_postback_data(self, msg):
         rich_payload = msg.get('richInteraction', {}).get('interaction', {}).get('payload', {})
         if rich_payload:
-            wrapped_pb_data = json.loads(rich_payload['suggestionResponse']['postbackData'])
-            original_pb_data = wrapped_pb_data['postbackData']
-            return original_pb_data
+            try:
+                wrapped_pb_data = json.loads(rich_payload['suggestionResponse']['postbackData'])
+                original_pb_data = wrapped_pb_data['postbackData']
+                return original_pb_data
+            except:
+                return None
         else:
             return None
 
