@@ -66,9 +66,7 @@ class ReviewBot(object):
         rich_payload = msg.get('richInteraction', {}).get('interaction', {}).get('payload', {})
         if rich_payload:
             try:
-                wrapped_pb_data = json.loads(rich_payload['suggestionResponse']['postbackData'])
-                original_pb_data = wrapped_pb_data['postbackData']
-                return original_pb_data
+                return json.loads(rich_payload['suggestionResponse']['postbackData'])
             except:
                 return None
         else:
