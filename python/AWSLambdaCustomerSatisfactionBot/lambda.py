@@ -51,9 +51,9 @@ class ReviewBot(object):
     def pong(self, healthy=True):
         self.s.post(urljoin(self.site, 'api/v1/agent-hooks/pong'), json={'healthy':healthy})
 
-    def acknowledge_conversation_update(self, update):
+    def acknowledge_conversation_update(self, update, state):
         cid  = update['state']['id']
-        data = {'stateId': update['stateId']}
+        data = {'stateId': update['stateId'], 'clientState': state}
         self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/acknowledge'.format(cid)), json=data)
 
     def send_message(self, cid, msg=None, rich_interaction=None):
@@ -77,11 +77,11 @@ class ReviewBot(object):
         data = {'fields': [{'field': k, 'value': v} for k, v in field_map.items()]}
         self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/update-fields'.format(cid)), json=data)
 
-    def handle(self, event_type, data):
+    def handle(self, event_type, data, context):
         if event_type == 'conversation-update':
-            self.handle_conversation_update(data)
+            self.handle_conversation_update(data, context)
 
-    def handle_conversation_update(self, update):
+    def handle_conversation_update(self, update, my_state):
         conversation = update['state']
 
         hint = next((h['hint'] for h in update['hints']), None)
@@ -91,47 +91,48 @@ class ReviewBot(object):
         if hint == 'invitation-timer-active':
             self.accept_invitation(conversation['id'])
         elif hint == 'response-timer-active' or conversation['owner'] == self.username and len(my_messages) == 0:
-            self.handle_responding_to_customer(conversation)
+            self.handle_responding_to_customer(conversation, my_state)
 
-    def handle_responding_to_customer(self, conversation):
+    def handle_responding_to_customer(self, conversation, my_state):
         cid = conversation['id']
-        
-        sent_yes_no   = next((msg for msg in conversation['messages'] if msg['richInteraction'] and msg['richInteraction']['quiqReply'] == opt_in_reply['quiqReply']), None) != None
-        sent_stars    = next((msg for msg in conversation['messages'] if msg['richInteraction'] and msg['richInteraction']['quiqReply'] == stars_reply['quiqReply']), None) != None
-        sent_solicit  = next((msg for msg in conversation['messages'] if msg['text'] and msg['text'] == solicit_msg), None) != None
-        sent_anything = next((msg for msg in conversation['messages'] if msg['richInteraction'] and msg['richInteraction']['quiqReply'] == anything_else_reply['quiqReply']), None) != None
 
+        last_action = my_state['lastAction'] if 'lastAction' in my_state else None
+        
         last_customer_message = next(msg for msg in reversed(conversation['messages']) if msg['fromCustomer'])
 
         msg_text = last_customer_message['text']
 
-        if not sent_yes_no:
+        if not last_action:
             self.send_message(cid, rich_interaction=opt_in_reply)
-        else:
-            if not sent_stars:
-                if msg_text.lower().startswith('yes'):
-                    self.send_message(cid, 'Great!')
-                    self.send_message(cid, rich_interaction=stars_reply)
-                elif msg_text.lower().startswith('no'):
-                    self.mark_closed(cid)
-                else:
-                    self.send_message(cid, 'Sorry, I\'m not sure what you mean by that. If you have any further questions please reply again to talk to an agent!')
-                    self.mark_closed(cid)
+            my_state['lastAction'] = 'sent-opt-in'
+        elif last_action == 'sent-opt-in':
+            if msg_text.lower().startswith('yes'):
+                self.send_message(cid, 'Great!')
+                self.send_message(cid, rich_interaction=stars_reply)
+                my_state['lastAction'] = 'sent-stars'
+            elif msg_text.lower().startswith('no'):
+                self.mark_closed(cid)
+                my_state['lastAction'] = 'closed'
             else:
-                if not sent_solicit:
-                    self.send_message(cid, solicit_msg)
-                else:
-                    if not sent_anything:
-                        self.send_message(cid, rich_interaction=anything_else_reply)
-                    else:
-                        if msg_text.lower() == 'yes':
-                            pass
-                        elif msg_text.lower() == 'no':
-                            self.send_message(cid, "Thanks for your feedback!")
-                            self.mark_closed(cid)
-                        else:
-                            self.send_message(cid, rich_interaction=anything_else_reply)
-    
+                self.send_message(cid, 'Sorry, I\'m not sure what you mean by that. If you have any further questions please reply again to talk to an agent!')
+                self.mark_closed(cid)
+                my_state['lastAction'] = 'closed'
+        elif last_action == 'sent-stars':
+            self.send_message(cid, solicit_msg)
+            my_state['lastAction'] = 'sent-solicit'
+        elif last_action == 'sent-solicit':
+            self.send_message(cid, rich_interaction=anything_else_reply)
+            my_state['lastAction'] = 'sent-anything-else'
+        elif last_action == 'sent-anything-else':
+            if msg_text.lower() == 'yes':
+                my_state['lastAction'] = 'sent-anything-else'
+            elif msg_text.lower() == 'no':
+                self.send_message(cid, "Thanks for your feedback!")
+                self.mark_closed(cid)
+                my_state['lastAction'] = 'closed'
+            else:
+                self.send_message(cid, rich_interaction=anything_else_reply)
+                my_state['lastAction'] = 'sent-anything-else'
 
 def build_response(status_code, body):
     return {
@@ -162,7 +163,9 @@ def lambda_handler(event, context):
         bot.pong()
 
     for update in body['conversationUpdates']:
-        bot.handle('conversation-update', update)
-        bot.acknowledge_conversation_update(update)
+        bot_state = update['clientState'] if 'clientState' in update and update['clientState'] else {}
+        bot.handle('conversation-update', update, bot_state)
+        bot.acknowledge_conversation_update(update, bot_state)
 
     return build_response(200, {})
+
