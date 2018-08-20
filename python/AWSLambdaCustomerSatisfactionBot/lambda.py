@@ -15,29 +15,27 @@ TOKEN_HEADER = 'X-Centricient-Hook-Token'
 TENANT_HEADER = 'X-Quiq-Tenant'
 
 def build_quiq_reply(question, replies):
-    payload = {
-        'interactionType': 'quiq-reply',
-        'quiqReply': {
-            'prompt': {
-                'text': question,
-            },
-            'replies': replies
-        },
-        'transcriptHints': {
-            'icon': { 'builtInIcon': 'list' },
-            'heading1': question,
-            'heading2': None,
-            'description': ", ".join([reply['text'] for reply in replies])
-            }
-        }
-    return payload
+    payload =  {
+		'prompt': {
+			'text': question,
+		},
+		'replies': replies
+    }
+
+    hints = {
+		'icon': { 'builtInIcon': 'list' },
+		'heading1': question,
+		'heading2': None,
+		'description': ", ".join([reply['text'] for reply in replies])
+    }
+    return payload, hints
     
 
 replies = [{'text': "🌟" * i, "directives": {"fieldUpdates": [{"field": "schema.conversation.custom.csat", "value": str(i)}], 'newConversationRouting': None, 'preventMessage': False}} for i in range(1, 6)]
 
-stars_reply         = build_quiq_reply('How would you rate your experience?', replies)
-opt_in_reply        = build_quiq_reply('Tell us how we did today?', [{'text': 'Yes', 'directives': None}, {'text': 'No Thanks', 'directives': None}])
-anything_else_reply = build_quiq_reply('Thanks! Anything else to add?', [{'text': 'Yes', 'directives': None}, {'text': 'No', 'directives': None}])
+stars_reply, stars_hints                  = build_quiq_reply('How would you rate your experience?', replies)
+opt_in_reply, opt_in_hints                = build_quiq_reply('Tell us how we did today?', [{'text': 'Yes', 'directives': None}, {'text': 'No Thanks', 'directives': None}])
+anything_else_reply, anything_else_hints  = build_quiq_reply('Thanks! Anything else to add?', [{'text': 'Yes', 'directives': None}, {'text': 'No', 'directives': None}])
 
 solicit_msg = "Please tell us why you selected this rating"
 
@@ -56,8 +54,8 @@ class ReviewBot(object):
         data = {'stateId': update['stateId'], 'clientState': state}
         self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/acknowledge'.format(cid)), json=data)
 
-    def send_message(self, cid, msg=None, rich_interaction=None):
-        data = {'text': msg, 'richInteraction': rich_interaction}
+    def send_message(self, cid, msg=None, quiq_reply=None, transcript_hints=None):
+        data = {'text': msg, 'quiqReply': quiq_reply, 'transcriptHints': transcript_hints}
         print(self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/send-message'.format(cid)), json=data).text)
 
     def accept_invitation(self, cid):
@@ -103,12 +101,12 @@ class ReviewBot(object):
         msg_text = last_customer_message['text']
 
         if not last_action:
-            self.send_message(cid, rich_interaction=opt_in_reply)
+            self.send_message(cid, quiq_reply=opt_in_reply, transcript_hints=opt_in_hints)
             my_state['lastAction'] = 'sent-opt-in'
         elif last_action == 'sent-opt-in':
             if msg_text.lower().startswith('yes'):
                 self.send_message(cid, 'Great!')
-                self.send_message(cid, rich_interaction=stars_reply)
+                self.send_message(cid, quiq_reply=stars_reply, transcript_hints=stars_hints)
                 my_state['lastAction'] = 'sent-stars'
             elif msg_text.lower().startswith('no'):
                 self.mark_closed(cid)
@@ -121,7 +119,7 @@ class ReviewBot(object):
             self.send_message(cid, solicit_msg)
             my_state['lastAction'] = 'sent-solicit'
         elif last_action == 'sent-solicit':
-            self.send_message(cid, rich_interaction=anything_else_reply)
+            self.send_message(cid, quiq_reply=anything_else_reply, transcript_hints=anything_else_hints)
             my_state['lastAction'] = 'sent-anything-else'
         elif last_action == 'sent-anything-else':
             if msg_text.lower() == 'yes':
@@ -131,7 +129,7 @@ class ReviewBot(object):
                 self.mark_closed(cid)
                 my_state['lastAction'] = 'closed'
             else:
-                self.send_message(cid, rich_interaction=anything_else_reply)
+                self.send_message(cid, quiq_reply=anything_else_reply, transcript_Hints=anything_else_hints)
                 my_state['lastAction'] = 'sent-anything-else'
 
 def build_response(status_code, body):
@@ -168,4 +166,3 @@ def lambda_handler(event, context):
         bot.acknowledge_conversation_update(update, bot_state)
 
     return build_response(200, {})
-
