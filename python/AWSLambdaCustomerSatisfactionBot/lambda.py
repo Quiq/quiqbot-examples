@@ -14,6 +14,11 @@ from botocore.vendored import requests
 TOKEN_HEADER = 'X-Centricient-Hook-Token'
 TENANT_HEADER = 'X-Quiq-Tenant'
 
+# This bot implements a basic post interaction customer survey. It utilizes Quiq replies, which
+# are suggested responses for the user supported across all message platforms, to streamline
+# the interaction with the customer. It also shows how to use the clientState feature to 
+# easily maintain per-conversation-state while allowing the bout source to remain stateless. 
+
 def build_quiq_reply(question, replies):
     payload =  {
 		'prompt': {
@@ -82,13 +87,11 @@ class ReviewBot(object):
     def handle_conversation_update(self, update, my_state):
         conversation = update['state']
 
-        hint = next((h['hint'] for h in update['hints']), None)
+        current_hints = set([h['hint'] for h in update['hints']])
 
-        my_messages = [msg for msg in conversation['messages'] if msg['author'] == self.username]
-
-        if hint == 'invitation-timer-active':
+        if 'invitation-timer-active' in current_hints:
             self.accept_invitation(conversation['id'])
-        elif hint == 'response-timer-active' or conversation['owner'] == self.username and len(my_messages) == 0:
+        elif 'response-timer-active' in current_hints or 'no-message-since-assignment' in current_hints:
             self.handle_responding_to_customer(conversation, my_state)
 
     def handle_responding_to_customer(self, conversation, my_state):
@@ -129,7 +132,7 @@ class ReviewBot(object):
                 self.mark_closed(cid)
                 my_state['lastAction'] = 'closed'
             else:
-                self.send_message(cid, quiq_reply=anything_else_reply, transcript_Hints=anything_else_hints)
+                self.send_message(cid, quiq_reply=anything_else_reply, transcript_hints=anything_else_hints)
                 my_state['lastAction'] = 'sent-anything-else'
 
 def build_response(status_code, body):

@@ -7,6 +7,13 @@ from flask import Flask, request
 
 TOKEN_HEADER = 'X-Centricient-Hook-Token'
 
+# Please note - this bot is a very simplistic bot that is just meant to show
+# basic hook handling and API invocation. The bot doesn't utilize the 'clientState'
+# feature that allows bots to maintain state without their own database via the 
+# Quiq bot API. Practical bots will almost certainly want to use clientState. For 
+# an example, please see 
+# https://github.com/Quiq/quiqbot-examples/blob/master/python/AWSLambdaCustomerSatisfactionBot/lambda.py
+
 class SampleBot(object):
     def __init__(self, site, username, appId, appSecret):
         print('Created bot for {}'.format(site))
@@ -44,10 +51,11 @@ class SampleBot(object):
     def handle_conversation_update(self, update):
         conversation = update['state']
 
-        hint = next((h['hint'] for h in update['hints']), None)
-        if hint == 'invitation-timer-active':
+        current_hints = set([h['hint'] for h in update['hints']])
+
+        if 'invitation-timer-active' in current_hints:
             self.accept_invitation(conversation['id'])
-        elif hint == 'response-timer-active':
+        elif 'response-timer-active' in current_hints or 'no-message-since-assignment' in current_hints:
             self.handle_responding_to_customer(conversation)
 
     def handle_responding_to_customer(self, conversation):

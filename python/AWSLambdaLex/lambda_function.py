@@ -12,7 +12,7 @@ QUIQ_SITE = "https://<tenant>.goquiq.com"
 #       This is for demo purposes only.
 
 QUIQ_BOT_USERNAME = "<username of your Quiq bot agent>"
-QUIQ_VERIFICATION_TOKEN = "<your quiq bot secret>""
+QUIQ_VERIFICATION_TOKEN = "<your quiq bot secret>"
 QUIQ_ACCESS_TOKEN_ID = "<Bot agent's access token ID>"
 QUIQ_ACCESS_TOKEN_SECRET = "<Bot agent's access token secret>"
 
@@ -69,9 +69,12 @@ def respond_to_customer(conversation):
 def handle_conversation_update(update):
     conversation = update['state']
     hint = next((h['hint'] for h in update['hints']), None)
-    if hint == 'invitation-timer-active':
+
+    current_hints = set([h['hint'] for h in update['hints']])
+
+    if 'invitation-timer-active' in current_hints:
         quiq.accept_invitation(conversation['id'])
-    elif hint == 'response-timer-active':
+    elif 'response-timer-active' in current_hints or 'no-message-since-assignment' in current_hints:
         respond_to_customer(conversation)
 
 def lambda_handler(event, context):
