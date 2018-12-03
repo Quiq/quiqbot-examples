@@ -16,6 +16,7 @@ site = os.environ['site']
 
 http = requests.Session()
 http.auth = (app_id, app_secret) 
+
 def qapi_pong(): return http.post(urljoin(site, 'api/v1/agent-hooks/pong'), json={'healthy': True})
 
 def qapi_acknowledge(conversation_id, request):    return http.post(urljoin(site, 'api/v1/messaging/conversations/{}/acknowledge'.format(conversation_id)), json=request)
@@ -124,16 +125,18 @@ def return_conversation_to_previous_owner(conversation):
 
     qapi_send_to_user(conversation['id'], {'userId': old_owner})
 
-from flask import Flask, request
-app = Flask(__name__)
+# For running locally
+if __name__ == '__main__':
+    from flask import Flask, request
+    app = Flask(__name__)
 
-@app.route('/flask-handler', methods=['post'])
-def flask_handler():
-    if request.headers.get('X-Centricient-Hook-Token') != hook_secret:
-        return 'Invalid verification token provided', 403
+    @app.route('/flask-handler', methods=['post'])
+    def flask_handler():
+        if request.headers.get('X-Centricient-Hook-Token') != hook_secret:
+            return 'Invalid verification token provided', 403
 
-    agent_hook_handler(request.json)
+        agent_hook_handler(request.json)
 
-    return '', 204
+        return '', 204
 
-app.run(port=9000, debug=True)
+    app.run(port=9000, debug=True)

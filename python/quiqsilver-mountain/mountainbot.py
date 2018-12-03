@@ -175,16 +175,18 @@ def generate_response(conversation, bot_state):
 
     bot_state['last-action'] = next_action
 
-from flask import Flask, request
-app = Flask(__name__)
+# For running locally
+if __name__ == '__main__':
+    from flask import Flask, request
+    app = Flask(__name__)
 
-@app.route('/flask-handler', methods=['post'])
-def flask_handler():
-    if request.headers.get('X-Centricient-Hook-Token') != hook_secret:
-        return 'Invalid verification token provided', 403
+    @app.route('/flask-handler', methods=['post'])
+    def flask_handler():
+        if request.headers.get('X-Centricient-Hook-Token') != hook_secret:
+            return 'Invalid verification token provided', 403
 
-    agent_hook_handler(request.json)
+        agent_hook_handler(request.json)
 
-    return '', 204
+        return '', 204
 
-app.run(port=9000, debug=True)
+    app.run(port=9000, debug=True)
