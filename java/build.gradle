@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+apply plugin: 'application'
+
+group 'com.goquiq'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+mainClassName = 'com.goquiq.bots.RepeaterBot'
+
+dependencies {
+    compile group: 'com.mashape.unirest', name: 'unirest-java', version: '1.4.9'
+    compile group: 'org.nanohttpd', name: 'nanohttpd', version: '2.3.1'
+}
