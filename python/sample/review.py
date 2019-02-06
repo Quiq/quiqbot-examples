@@ -21,7 +21,7 @@ class ReviewBot(object):
 
     def acknowledge_conversation_update(self, update):
         cid  = update['state']['id']
-        data = {'stateId': update['stateId']}
+        data = {'ackId': update['ackId']}
         self.s.post(urljoin(self.site, 'api/v1/messaging/conversations/{}/acknowledge'.format(cid)), json=data)
 
     def send_message(self, cid, msg):

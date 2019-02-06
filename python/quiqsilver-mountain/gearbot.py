@@ -51,7 +51,7 @@ def conversation_update_handler(update):
     conversation_state    = update['state']
     conversation_id       = update['state']['id']
     conversation_hints    = update['hints']
-    conversation_state_id = update['stateId']
+    conversation_ack_id   = update['ackId']
 
     bot_state = update['clientState'] if 'clientState' in update and update['clientState'] else {}
 
@@ -60,7 +60,7 @@ def conversation_update_handler(update):
     except Exception as e:
         logger.error("Error while handling conversation update!", e)
         
-    request = {'stateId': conversation_state_id, 'clientState': bot_state}
+    request = {'ackId': conversation_ack_id, 'clientState': bot_state}
     qapi_acknowledge(conversation_id, request)
 
 def react_to_conversation_update(conversation, conversation_hints, bot_state):

@@ -87,16 +87,16 @@ public class RepeaterBot extends NanoHTTPD {
                 System.out.println("Received update: " + update);
 
                 String conversationId = update.getJSONObject("state").getString("id");
-                int stateId = update.getInt("stateId");
+                int ackId = update.getInt("ackId");
                 try {
                     handleConversationUpdate(update);
                 } catch (Exception e) {
                     System.out.println(e.getMessage());
                     e.printStackTrace(System.out);
                 } finally {
-                    // We want to call acknowledge for each state ID no matter what so
+                    // We want to call acknowledge for each ack ID no matter what so
                     // that Quiq continues to send us more state updates
-                    acknowledge(conversationId, stateId);
+                    acknowledge(conversationId, ackId);
                 }
             }
         }
@@ -180,9 +180,9 @@ public class RepeaterBot extends NanoHTTPD {
         invokeQuiqApi("api/v1/agent-hooks/pong", payload);
     }
 
-    private void acknowledge(String conversationId, int stateId) throws Exception {
+    private void acknowledge(String conversationId, int ackId) throws Exception {
         JSONObject payload = new JSONObject();
-        payload.put("stateId", stateId);
+        payload.put("ackId", ackId);
 
         invokeQuiqApi("api/v1/messaging/conversations/" + conversationId + "/acknowledge", payload);
     }
