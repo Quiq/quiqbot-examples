@@ -13,10 +13,10 @@ namespace ConsoleBot
     { 
         static void Main(string[] args)
         {
-            string token = "533eb23f-2fc1-4959-abbc-798f8692b85a";
-            string site = "https://brad.goquiq.com/";
-            string username = "eeb534f1-9136-4774-bfc1-482ef5eefc4f";
-            string password = "eyJhbGciOiJIUzI1NiIsImtpZCI6ImJhc2ljOjAifQ.eyJ0ZW5hbnQiOiJicmFkIiwic3ViIjoiNjkzODcifQ.3U0G6UxGfGSZULu_s5g0uxLMguG7cSfczIFlMiTp1hA";
+            string token = "<hook secret>";
+            string site = "https://<site>/";
+            string username = "<app id>";
+            string password = "<app secret>";
 
 
             Console.WriteLine("Hello Bot!");
