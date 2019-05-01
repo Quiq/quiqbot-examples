@@ -94,7 +94,7 @@ public class MountainBot
         actionHandlers.Add("send-triage", (JToken conversation, JToken botState) => { SendTriage(conversation, botState); });
     }
 
-    private async void SendResponse(string url, string payload)
+    private void SendResponse(string url, string payload)
     {
         using (HttpClient client = new HttpClient())
         {
@@ -108,7 +108,7 @@ public class MountainBot
             }
             var content = new StringContent(payload, Encoding.UTF8, "application/json");
             var fullUrl = Path.Join(_site, url);
-            await client.PostAsync(fullUrl, content);
+            var response = client.PostAsync(fullUrl, content).Result;
         }
     }
 
@@ -322,8 +322,8 @@ public class MountainBot
         {
             nextAction = responseHandlers[botState["last-action"].ToString()](conversationState, botState);
         }
-    
-        if (nextAction != null)
+
+        if (nextAction != null && actionHandlers.ContainsKey(nextAction))
         {
             actionHandlers[nextAction](conversationState, botState);
         }
@@ -398,7 +398,7 @@ public class MountainBot
             using (StreamReader reader = new StreamReader(body, request.ContentEncoding))
             {
                 var payload = reader.ReadToEnd();
-                Console.WriteLine(payload);
+
 
                 var resource = JObject.Parse(payload);
 
@@ -408,6 +408,8 @@ public class MountainBot
 
                 if (resource["ping"] != null)
                 {
+                    Console.WriteLine("Received Ping");
+
                     QapiPong();
                 }
             }
