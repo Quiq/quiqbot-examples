@@ -1,0 +1,23 @@
+{
+  "name": "quiq-node-bot-example",
+  "version": "1.0.0",
+  "description": "Quiq Bot example featuring a ski resort bot",
+  "main": "./MountainBot/index.js",
+  "scripts": {
+    "start": "nf start"
+  },
+  "author": "Quiq",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "1.19.0",
+    "express": "4.17.1",
+    "lodash": "4.17.11",
+    "morgan": "1.9.1",
+    "ngrok": "3.1.1",
+    "node-color-log": "2.2.0",
+    "node-fetch": "2.6.0"
+  },
+  "devDependencies": {
+    "foreman": "3.0.1"
+  }
+}
