@@ -1,0 +1,2 @@
+server: nodemon ./MountainBot/index.js
+ngrok: node ./MountainBot/ngrok.js
