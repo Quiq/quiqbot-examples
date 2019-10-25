@@ -40,6 +40,10 @@ const handleConversationUpdate = async update => {
   await apiCalls.acknowledge(state.id, {ackId, clientState: botState});
 };
 
-const handleConversationEvents = async updates => updates.forEach(handleConversationUpdate);
+const handleConversationEvents = async updates => {
+  for (update of updates){
+    await handleConversationUpdate(update);
+  }
+}
 
 module.exports = handleConversationEvents;
