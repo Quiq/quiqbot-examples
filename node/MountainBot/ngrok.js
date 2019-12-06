@@ -1,12 +1,12 @@
-const ngrok = require('ngrok');
+const ngrok = require("ngrok");
 
 (async () => {
   const ngrokUrl = await ngrok.connect({
-    proto: 'http',
+    proto: "http",
     addr: 3000,
-    subdomain: process.env.ngrokAuthToken,
-    authtoken: process.env.ngrokSubdomain,
-    region: 'us',
+    subdomain: process.env.ngrokSubdomain,
+    authtoken: process.env.ngrokAuthToken,
+    region: "us"
   });
 
   console.log(`
