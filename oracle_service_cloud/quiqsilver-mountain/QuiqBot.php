@@ -1,31 +1,41 @@
 <?php
 
 namespace Custom\Controllers;
-use RightNow\Utils\Framework,
-    RightNow\Utils\Text,
-    RightNow\Libraries\ResponseObject;
+// use RightNow\Utils\Framework,
+//     RightNow\Utils\Text,
+//     RightNow\Libraries\ResponseObject;
 
-class QuiqBot extends \RightNow\Controllers\Base
+class QuiqBot //extends \RightNow\Controllers\Base
 {
     //This is the constructor for the custom controller. Do not modify anything within
     //this function.
     function __construct()
     {
-        parent::__construct();
+        
+        $this->recieve();
+        // parent::__construct();
+    }
+
+    private function log($message, $title = "LOG") {
+        error_log(print_r("-------------" . $title . "------------", TRUE)); 
+        error_log(print_r($message, TRUE)); 
+        error_log(print_r("-------------" . $title . "------------", TRUE));
     }
 
     public function recieve()
     {
-        $appId = 'CHANGE THIS'; //TODO - CHANGE THIS
-        $appSecret = 'CHANGE THIS'; //TODO - CHANGE THIS
-        $hookSecret = 'CHANGE THIS'; //TODO - CHANGE THIS
-        $site = 'CHANGE THIS'; //TODO - CHANGE THIS
+        $appId = 'de649dd7-074c-4de1-9391-9b25ac7fb5c7';
+        $appSecret = 'eyJhbGciOiJIUzI1NiIsImtpZCI6ImJhc2ljOjAifQ.eyJ0ZW5hbnQiOiJhbmRyZXciLCJzdWIiOiIxNjIwMTAifQ.bSvfLe_xf2AmbsV2F2JG8wqDwTvlGJPyM339qyoLo-E';
+        $hookSecret = '3d227436-e7f3-4705-8390-3b97edca2cbb';
+        $site = 'https://andrew.goquiq.com';
 
         $headers = apache_request_headers();
 
+        $this->log($headers,"HEADERS");
+
         if($headers['X-Centricient-Hook-Token'] !== $hookSecret){
             header($_SERVER['SERVER_PROTOCOL'] . ' 403 Unauthorized');
-            Framework::writeContentWithLengthAndExit(json_encode(Config::getMessage(END_REQS_BODY_REQUESTS_FORMATTED_MSG)) . str_repeat("\n", 512), 'application/json');
+            // Framework::writeContentWithLengthAndExit(json_encode(Config::getMessage(END_REQS_BODY_REQUESTS_FORMATTED_MSG)) . str_repeat("\n", 512), 'application/json');
             exit();
         }
 
@@ -33,14 +43,16 @@ class QuiqBot extends \RightNow\Controllers\Base
 
         $data = json_decode($raw_post, true);
         
+        $this->log($data,"DATA");
+
         if(!$data)
         {
             header($_SERVER['SERVER_PROTOCOL'] . ' 400 Bad Request');
             // Pad the error message with spaces so IE will actually display it instead of a misleading, but pretty, error message.
-            Framework::writeContentWithLengthAndExit(json_encode(Config::getMessage(END_REQS_BODY_REQUESTS_FORMATTED_MSG)) . str_repeat("\n", 512), 'application/json');
+            // Framework::writeContentWithLengthAndExit(json_encode(Config::getMessage(END_REQS_BODY_REQUESTS_FORMATTED_MSG)) . str_repeat("\n", 512), 'application/json');
         }
 
-        if($data['ping'])
+        if($data['ping']) 
             $this->qApiPong($site, $appId, $appSecret);
 
 
@@ -113,6 +125,7 @@ class QuiqBot extends \RightNow\Controllers\Base
     }
 
     private function topMenuResponseHandler($site, $appId, $appSecret, $conversation, &$botState) {
+        $this->log("TopMenu");
         $customerMessages = array_filter($conversation['messages'], function($message){
             return $message['fromCustomer'];
         });
@@ -138,39 +151,47 @@ class QuiqBot extends \RightNow\Controllers\Base
     }
 
     private function qApiPong($site, $appId, $appSecret) {
+        $this->log("Pong");
         $this->doCurlPost($appId, $appSecret, "$site/api/v1/agent-hooks/pong", json_encode(array("healthy" => true)));
     }
 
     private function qApiAcknowledge($site, $appId, $appSecret, $conversationId, $request) {
+        $this->log("Acknowledge");
         $this->doCurlPost($appId, $appSecret,"$site/api/v1/messaging/conversations/$conversationId/acknowledge", $request);
     }
 
     private function qApiAccept($site, $appId, $appSecret, $conversationId) {
+        $this->log("Accept");
         $this->doCurlPost($appId, $appSecret, "$site/api/v1/messaging/conversations/$conversationId/accept", "");
     }
 
     private function qApiAcceptTransfer($site, $appId, $appSecret, $conversationId) {
+        $this->log("Accept Transfer");
         $this->doCurlPost($appId, $appSecret, "$site/api/v1/messaging/conversations/$conversationId/accept-transfer", '');
     }
 
     private function qApiSendMessage($site, $appId, $appSecret, $conversationId, $request) {
+        $this->log("Send Message");
         $this->doCurlPost($appId, $appSecret, "$site/api/v1/messaging/conversations/$conversationId/send-message", $request);
     }
 
     private function qApiSendToQueue($site, $appId, $appSecret, $conversationId, $request) {
+        $this->log("Send to Queue");
         $this->doCurlPost($appId, $appSecret, "$site/api/v1/messaging/conversations/$conversationId/send-to-queue", $request);
     }
 
     private function qApiSendToUser($site, $appId, $appSecret, $conversationId, $request) {
+        $this->log("Send to User");
         $this->doCurlPost($appId, $appSecret, "$site/api/v1/messaging/conversations/$conversationId/send-to-user", $request);
     }
 
     private function qApiUpdateFields($site, $appId, $appSecret, $conversationId, $request) {
+        $this->log("Update Fields");
         $this->doCurlPost($appId, $appSecret, "$site/api/v1/messaging/conversations/$conversationId/update-fields", $request);
     }
 
     private function doCurlPost($appId, $appSecret, $url, $payload) {
-       load_curl();
+        //    load_curl();
 
        $ch = curl_init($url);
        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
