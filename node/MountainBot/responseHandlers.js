@@ -1,47 +1,55 @@
-const last = require('lodash/last');
-const apiCalls = require('./apiCalls');
+const last = require("lodash/last");
+const logger = require("node-color-log");
+const apiCalls = require("./apiCalls");
+const messages = require("./messages");
 
-const sendTopMenu = async conversation => {
-  const lastCustomerMessage = last(conversation.messages.filter(m => m.fromCustomer));
-
-  const actionMap = {
-    'snow report': 'sendSnowReport',
-    'hours of operation': 'sendHours',
-    'ticket prices': 'sendTicketPrices',
-    'live representative': 'sendTriage',
-  };
-
-  const action = Object.keys(actionMap).find(k =>
-    lastCustomerMessage.text.toLowerCase().includes(k),
-  );
-  if (action) return actionMap[action];
-
-  await apiCalls.sendMessage(conversation.id, {text: "Sorry, I'm not built to understand that!"});
-  return 'sendTopMenu';
+const getOrder = async text => {
+  return text.includes("0")
+    ? {
+        id: "1234567",
+        status: "Found",
+        name: "Window"
+      }
+    : undefined;
 };
 
-const sendTriage = async conversation => {
-  const lastCustomerMessage = last(conversation.messages.filter(m => m.fromCustomer));
+const getCustomer = async phoneNumber => {
+  return phoneNumber.includes("0")
+    ? {
+        id: "123456",
+        name: "Bob Hope"
+      }
+    : undefined;
+};
 
-  const responseMap = {
-    'purchase tickets': 'tickets',
-    'equipment rental': 'rental',
-    lodging: 'lodging',
-    'ski school': 'school',
-  };
-  const response = Object.keys(responseMap).find(k =>
-    lastCustomerMessage.text.toLowerCase().includes(k),
-  );
+const promptOrderNumber = async conversation => {
+  const lastCustomerMessage = last(conversation.messages.filter(m => m.fromCustomer)).text;
 
-  const intent = response ? responseMap[response] : 'other';
+  const order = await getOrder(lastCustomerMessage);
+  const customer = await getCustomer("+00009191818");
 
-  await apiCalls.updateFields(conversation.id, {
-    fields: [{field: 'schema.conversation.custom.intent', value: intent}],
-  });
-  await apiCalls.sendToQueue(conversation.id, {targetQueue: 'default'});
+  if (order && customer) {
+    const text = `${messages.orderFound}\n\n${order.name}: ${order.status}`;
+    await apiCalls.sendMessage(conversation.id, {text});
+    await apiCalls.close(conversation.id);
+  } else {
+    return "requestHuman";
+  }
+};
+
+const requestHuman = async conversation => {
+  const lastCustomerMessage = last(conversation.messages.filter(m => m.fromCustomer)).text;
+
+  if (lastCustomerMessage.toLowerCase().includes(messages.tryAgain.toLowerCase())) {
+    return "promptOrderNumber";
+  } else {
+    await apiCalls.sendMessage(conversation.id, {text: messages.connectToAgent});
+    // Todo: Change to whatever queue they want
+    await apiCalls.sendToQueue(conversation.id, {targetQueue: "default"});
+  }
 };
 
 module.exports = {
-  sendTopMenu,
-  sendTriage,
+  promptOrderNumber,
+  requestHuman
 };
